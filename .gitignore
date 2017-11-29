@@ -17,6 +17,7 @@
 *.hex
 *.map
 *.srec
+*.pdf
 
 #User Specific Files
 *.atsuo
