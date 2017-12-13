@@ -45,17 +45,24 @@ void core_init (void)
 	//pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 	//adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
 	NVIC_ClearPendingIRQ(ADC_IRQn);
-	NVIC_SetPriority(ADC_IRQn, 4);
+	NVIC_SetPriority(ADC_IRQn, ADC_IRQ_PRIORITY);
 	NVIC_EnableIRQ(ADC_IRQn);  
 	
 	//init timer 0	
 	pmc_enable_periph_clk(ID_TC0);		
-	tc_init(TC0, 0, TC_CMR_TCCLKS_TIMER_CLOCK4 | TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC );
-	tc_write_rc(TC0, 0, 50000);
-	tc_enable_interrupt(TC0, 0, TC_IER_CPCS);
-	NVIC_SetPriority(TC0_IRQn, 5);
+	tc_init(TC0, TIMER_CH, TC_CMR_TCCLKS_TIMER_CLOCK4 | TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC );
+	tc_write_rc(TC0, TIMER_CH, 50000);
+	tc_enable_interrupt(TC0, TIMER_CH, TC_IER_CPCS);
+	NVIC_SetPriority(TC0_IRQn, TIMER_IRQ_PRIORITY);
 	NVIC_EnableIRQ(TC0_IRQn);
 }
+
+void timer_set_compare_time (uint32_t tim)
+{
+	if(tim > 50000) tim = 50000;
+	tc_write_rc(TC0, TIMER_CH, tim);
+}
+
 
 
 void ADC_Handler (void)

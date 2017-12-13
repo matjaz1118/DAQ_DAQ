@@ -12,9 +12,21 @@
 #define CORE_H_
 
 //*******************************************************************Defines***************************************
+//general
 #define ADC_CORE_DEBUG	1 //set to 1 for aditional development debugging
-#define ADC_CLK	16000000 // clock of ADC converter
+
 #define ADC_RAW_DATA_SIZE 20 * 4 //maximum size of raw datra buffer for averaging
+
+//ADC configs
+#define ADC_CLK	16000000 // clock of ADC converter
+#define ADC_IRQ_PRIORITY		4	
+
+//TIMER configs
+#define TIMER_CH				0			//channel# of used timer
+#define TIMER_IRQ_PRIORITY		4			//IRQ priotity for timer
+#define TIMER_MAX				50000		// maximum value of timer
+#define TIMER_DIV				2			//division factor to convert from microseconds to TC counts
+
 
 #ifdef ADC_CORE_DEBUG == 1				//definition of debugging pins (only if debugging enabled)
 	#define ADC_DEBUG_PIN	PIO_PA9
@@ -33,6 +45,7 @@
 	#define TIMER_DEBUG_PIN_TGL	pio_toggle_pin_group(PIOA, TIMER_DEBUG_PIN);
 #endif // ADC_CORE_DEBUG == 1
 
+#define US_TO_TC(x) x / TIMER_DIV
 //********************************************************Typedefs****************************************************
 typedef enum		// bitmask for channel enabling
 {
@@ -51,5 +64,5 @@ typedef struct
 }daq_settings_t;
 //**************************************************************Functions***********************************************
 void core_init (void);
-
+void timer_set_compare_time (uint32_t tim);
 #endif /* CORE_H_ */
