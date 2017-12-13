@@ -22,20 +22,6 @@
 #define DAQ_SET_CYCLE_NBR		0x22
 #define DAQ_SET_ANALOG_OUT		0x32
 
-
-//Structure definitions
-typedef struct
-{
-	uint8_t newData;
-	uint32_t timerBase;
-	uint8_t sequence[9];
-	uint16_t avgCounter;
-	uint16_t cycles;
-	uint8_t startAcq;
-	uint8_t stopAcq;
-	uint8_t comMode;
-}daq_settings_t;
-
 //Finite state machine states definitions 
 
 #define FSM_ID_BYTE				0

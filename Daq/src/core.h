@@ -13,9 +13,12 @@
 
 //*******************************************************************Defines***************************************
 //general
-#define ADC_CORE_DEBUG	1 //set to 1 for aditional development debugging
+#define DAQ_MAX_AVG_NB	20		//maximum number of averages
+#define DAQ_MAX_ACQ_NB	100		//maximum number of consecutive acquisitions
 
-#define ADC_RAW_DATA_SIZE 20 * 4 //maximum size of raw datra buffer for averaging
+
+#define ADC_CORE_DEBUG	1 //set to 1 for aditional development debugging
+#define ADC_RAW_DATA_SIZE DAQ_MAX_AVG_NB * 4 //maximum size of raw datra buffer for averaging
 
 //ADC configs
 #define ADC_CLK	16000000 // clock of ADC converter
@@ -55,6 +58,12 @@ typedef enum		// bitmask for channel enabling
 	DAQ_CHANNEL_4 = 0x08
 }channel_bitmask_t;
 
+typedef enum
+{
+	CORE_STOPED,
+	CORE_RUNNING	
+}core_status_t;
+
 typedef struct
 {
 	uint32_t acqusitionTime;
@@ -62,7 +71,21 @@ typedef struct
 	uint32_t averaging;
 	channel_bitmask_t channels;	
 }daq_settings_t;
+
+typedef struct
+{
+	uint16_t results[4];
+	uint32_t chgannels;
+	volatile uint32_t new_data;
+}daq_measured_data_t;
+
 //**************************************************************Functions***********************************************
 void core_init (void);
 void timer_set_compare_time (uint32_t tim);
+void core_configure (daq_settings_t *settings);
+void core_start (void);
+core_status_t core_status_get (void);
+uint32_t core_new_data_ready (void);
+uint16_t* core_get_raw_data_pntr (void);
+uint32_t core_get_raw_data_size (void);
 #endif /* CORE_H_ */
