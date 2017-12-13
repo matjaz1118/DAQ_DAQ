@@ -23,3 +23,4 @@
 *.atsuo
 *.log
 Atas_REV_A/jlink.log
+Daq/jlink.config

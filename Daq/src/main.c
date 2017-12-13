@@ -29,12 +29,20 @@
  * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
  */
 #include <asf.h>
+#include "core.h"
 
 int main (void)
 {
 	/* Insert system clock initialization code here (sysclk_init()). */
-
+	wdt_disable(WDT);
+	sysclk_init();
 	board_init();
+	core_init();
+	tc_start(TC0, 0);
+	while(1)
+	{
+		
+	}
 
 	/* Insert application code here, after the board has been initialized. */
 }
