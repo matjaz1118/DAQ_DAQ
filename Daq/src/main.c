@@ -38,8 +38,7 @@ int main (void)
 	sysclk_init();
 	board_init();
 	core_init();
-	timer_set_compare_time(US_TO_TC(127));
-	tc_start(TC0, 0);
+
 	while(1)
 	{
 		

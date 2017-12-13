@@ -67,13 +67,20 @@ void timer_set_compare_time (uint32_t tim)
 
 void ADC_Handler (void)
 {
-	
+	if(ADC->ADC_ISR & ADC_ISR_RXBUFF)
+	{
+		#ifdef ADC_CORE_DEBUG == 1
+			TIMER_DEBUG_PIN_TGL;
+		#endif //ADC_CORE_DEBUG == 1
+	}
 }
 
 void TC0_Handler (void)
 {
 	if((tc_get_status(TC0, 0) & TC_SR_CPCS))
 	{
-		TIMER_DEBUG_PIN_TGL;
+		#ifdef ADC_CORE_DEBUG == 1
+			TIMER_DEBUG_PIN_TGL;
+		#endif //ADC_CORE_DEBUG == 1
 	}
 }
