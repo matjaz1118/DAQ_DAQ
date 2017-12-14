@@ -31,7 +31,7 @@
 #define TIMER_DIV				2			//division factor to convert from microseconds to TC counts
 
 
-#ifdef ADC_CORE_DEBUG == 1				//definition of debugging pins (only if debugging enabled)
+#if ADC_CORE_DEBUG == 1				//definition of debugging pins (only if debugging enabled)
 	#define ADC_DEBUG_PIN	PIO_PA9
 	#define TIMER_DEBUG_PIN	PIO_PA10
 #endif // ADC_CORE_DEBUG == 1
@@ -39,13 +39,13 @@
 
 //*************************************************************Macros**************************************************
 
-#ifdef ADC_CORE_DEBUG == 1				//debug pins control
-	#define ADC_DEBUG_PIN_SET	pio_set(PIOA, ADC_DEBUG_PIN);
-	#define ADC_DEBUG_PIN_CLR	pio_clear(PIOA, ADC_DEBUG_PIN);
-	#define TIMER_DEBUG_PIN_SET	pio_set(PIOA, TIMER_DEBUG_PIN);
-	#define TIMER_DEBUG_PIN_CLR	pio_clear(PIOA, TIMER_DEBUG_PIN);
-	#define ADC_DEBUG_PIN_TGL	pio_toggle_pin_group(PIOA, ADC_DEBUG_PIN);
-	#define TIMER_DEBUG_PIN_TGL	pio_toggle_pin_group(PIOA, TIMER_DEBUG_PIN);
+#if ADC_CORE_DEBUG == 1				//debug pins control
+	#define ADC_DEBUG_PIN_SET	pio_set(PIOA, ADC_DEBUG_PIN)
+	#define ADC_DEBUG_PIN_CLR	pio_clear(PIOA, ADC_DEBUG_PIN)
+	#define TIMER_DEBUG_PIN_SET	pio_set(PIOA, TIMER_DEBUG_PIN)
+	#define TIMER_DEBUG_PIN_CLR	pio_clear(PIOA, TIMER_DEBUG_PIN)
+	#define ADC_DEBUG_PIN_TGL	pio_toggle_pin_group(PIOA, ADC_DEBUG_PIN)
+	#define TIMER_DEBUG_PIN_TGL	pio_toggle_pin_group(PIOA, TIMER_DEBUG_PIN)
 #endif // ADC_CORE_DEBUG == 1
 
 #define US_TO_TC(x) x / TIMER_DIV
@@ -86,6 +86,7 @@ void core_configure (daq_settings_t *settings);
 void core_start (void);
 core_status_t core_status_get (void);
 uint32_t core_new_data_ready (void);
+uint32_t core_new_data_claer (void);
 uint16_t* core_get_raw_data_pntr (void);
 uint32_t core_get_raw_data_size (void);
 #endif /* CORE_H_ */

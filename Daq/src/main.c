@@ -47,14 +47,31 @@ void print_data (void)
 void calculate_data (void)
 {
 	uint16_t* raw_data_ptr;
+	uint32_t n, m = 0;
 	raw_data_ptr = core_get_raw_data_pntr();
+	for(n = 0; n < 4; n++) // clear the array
+	{
+		calc_data.results[n] = 0;
+	}
 	for(n = 0; n < core_get_raw_data_size(); n++)
 	{
-		calc_data.results[n % 4] += *(raw_data_ptr + n);
+		for(!(master_settings.channels & (0x01 << m)))
+		{
+			m++;
+			if(m > 3)
+			{
+				m = 0;
+			}
+		}
+		calc_data.results[m] += *(raw_data_ptr + n);
+		m++;
 	}
 	for(n = 0; n < 4; n++)
 	{
-		calc_data.results[n] /= (core_get_raw_data_size() / 4);
++		if((master_settings.channels & (0x01 << n))) // only divide enabled channels
+		{
+			calc_data.results[n] /= (core_get_raw_data_size() / 4);
+		}
 	}
 	calc_data.new_data = 1;
 }
@@ -67,10 +84,10 @@ int main (void)
 	board_init();
 	core_init();
 	
-	master_settings.acquisitionNbr = 1;
-	master_settings.acqusitionTime = 5000;
+	master_settings.acquisitionNbr = 6;
+	master_settings.acqusitionTime = 10000;
 	master_settings.averaging = 2;
-	master_settings.channels = DAQ_CHANNEL_1 | DAQ_CHANNEL_2;
+	master_settings.channels = (DAQ_CHANNEL_1);
 
 	while(1)
 	{
@@ -82,26 +99,9 @@ int main (void)
 			{
 				calculate_data();
 				print_data();
+				core_new_data_claer();
 			}
 		}
-	}
-
-	/* Insert application code here, after the board has been initialized. */
-}
-
-
-
-
-/*
-void ADC_Handler (void)
-{
-	uint32_t n = 0;
-	if(ADC->ADC_ISR & ADC_ISR_RXBUFF) // thiss gets triggered when acquisition of all samples for one averaging is complete
-	{
-		#ifdef ADC_CORE_DEBUG == 1
-		TIMER_DEBUG_PIN_TGL;
-		#endif //ADC_CORE_DEBUG == 1
-		
+		delay();
 	}
 }
-*/

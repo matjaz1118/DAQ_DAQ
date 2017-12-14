@@ -17,7 +17,7 @@ uint32_t raw_data_size;
 
 
 
-#ifdef ADC_CORE_DEBUG == 1
+#if ADC_CORE_DEBUG == 1
 	void pio_init (void)
 	{
 		pmc_enable_periph_clk(ID_PIOA);
@@ -36,10 +36,9 @@ void core_init (void)
 	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 1);
 	adc_configure_timing(ADC, 8, ADC_SETTLING_TIME_3, 1);
 	adc_configure_trigger(ADC, ADC_TRIG_SW, ADC_MR_FREERUN_ON); //WARNING! Bug in ASF! ADC_MR_FREERUN_ON does't actualy enables freerun mode!
-	ADC->ADC_MR |= ADC_MR_FREERUN; //due to a bug in ASF we enable freerun mode manualy
 	ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
 					 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
-	#ifdef ADC_CORE_DEBUG == 1
+	#if ADC_CORE_DEBUG == 1
 		pio_init();
 	#endif //ADC_CORE_DEBUG == 1
 	
@@ -64,9 +63,22 @@ void timer_set_compare_time (uint32_t tim)
 	tc_write_rc(TC0, TIMER_CH, tim);
 }
 
+void validate_settings (daq_settings_t *settings)
+{
+	if(settings->acqusitionTime < 10) {settings->acqusitionTime = 10;}
+	if(settings->acqusitionTime > 100000) {settings->acqusitionTime = 100000;}
+	if(settings->acquisitionNbr > DAQ_MAX_ACQ_NB) {settings->acquisitionNbr = DAQ_MAX_ACQ_NB;}
+	if(settings->averaging > DAQ_MAX_AVG_NB) {settings->averaging = DAQ_MAX_AVG_NB;}
+	if(settings->channels > (DAQ_CHANNEL_1 | DAQ_CHANNEL_2 | DAQ_CHANNEL_3 | DAQ_CHANNEL_4))
+	{
+		settings->averaging = (DAQ_CHANNEL_1 | DAQ_CHANNEL_2 | DAQ_CHANNEL_3 | DAQ_CHANNEL_4);
+	}
+}
+
 void core_configure (daq_settings_t *settings)
 {
 	uint32_t nb_enables_ch = 0, n;
+	volatile uint32_t dummy;
 	
 	//validate settings
 	validate_settings(settings);
@@ -98,20 +110,12 @@ void core_configure (daq_settings_t *settings)
 void core_start (void)
 {
 	pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
-	tc_start(TC0, TIMER_CH);
 	acqusition_in_progress = 1;
-}
-
-void validate_settings (daq_settings_t *settings)
-{
-	if(settings->acqusitionTime < 10) {settings->acqusitionTime = 10;}
-	if(settings->acqusitionTime > 100000) {settings->acqusitionTime = 100000;}
-	if(settings->acquisitionNbr > DAQ_MAX_ACQ_NB) {settings->acquisitionNbr = DAQ_MAX_ACQ_NB;}
-	if(settings->averaging > DAQ_MAX_AVG_NB) {settings->averaging = DAQ_MAX_AVG_NB;}
-	if(settings->channels > (DAQ_CHANNEL_1 | DAQ_CHANNEL_2 | DAQ_CHANNEL_3 | DAQ_CHANNEL_4)) 
-	{
-		settings->averaging = (DAQ_CHANNEL_1 | DAQ_CHANNEL_2 | DAQ_CHANNEL_3 | DAQ_CHANNEL_4);
-	}
+	tc_start(TC0, TIMER_CH);
+	ADC->ADC_MR |= ADC_MR_FREERUN; //due to a bug in ASF we enable freerun mode manualy
+	#if ADC_CORE_DEBUG == 1
+		ADC_DEBUG_PIN_SET;
+	#endif //ADC_CORE_DEBUG == 1
 }
 
 core_status_t core_status_get (void)
@@ -132,6 +136,12 @@ uint32_t core_new_data_ready (void)
 	return new_data;
 }
 
+uint32_t core_new_data_claer (void)
+{
+	new_data = 0;
+}
+
+
 uint16_t* core_get_raw_data_pntr (void)
 {
 	return adc_raw_data;
@@ -144,17 +154,16 @@ uint32_t core_get_raw_data_size (void)
 
 void ADC_Handler (void)
 {
-	if(ADC->ADC_ISR & ADC_ISR_RXBUFF) // thiss gets triggered when acquisition of all samples for one averaging is complete
+	if(ADC->ADC_ISR & ADC_ISR_RXBUFF) // this gets triggered when acquisition of all samples for one averaging is complete
 	{
-		ADC->ADC_MR &= (~ADC_MR_FREERUN) //stop adc
-		#ifdef ADC_CORE_DEBUG == 1
-			TIMER_DEBUG_PIN_TGL;
+		ADC->ADC_MR &= (~ADC_MR_FREERUN); //stop adc
+		#if ADC_CORE_DEBUG == 1
+			ADC_DEBUG_PIN_CLR;
 		#endif //ADC_CORE_DEBUG == 1
-		//configure dma for nex acusition
+		//configure dma for next acquisition
 		adc_pdc.ul_size = raw_data_size;
 		pdc_rx_init(adc_pdc_pntr, &adc_pdc, NULL);
 		adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
-		ADC->ADC_MR |= ADC_MR_FREERUN; //stop adc
 		//report new data
 		new_data = 1;
 	}
@@ -164,16 +173,21 @@ void TC0_Handler (void)
 {
 	if((tc_get_status(TC0, 0) & TC_SR_CPCS))
 	{
-		#ifdef ADC_CORE_DEBUG == 1
+		#if ADC_CORE_DEBUG == 1
 			TIMER_DEBUG_PIN_TGL;
 		#endif //ADC_CORE_DEBUG == 1
 		if(--rep_cntr)
 		{
+			ADC->ADC_MR |= ADC_MR_FREERUN; //start adc
+			#if ADC_CORE_DEBUG == 1
+				ADC_DEBUG_PIN_SET;
+			#endif //ADC_CORE_DEBUG == 1
 			adc_start(ADC);
 		}
 		else
 		{
 			acqusition_in_progress = 0;
+			tc_stop(TC0, TIMER_CH);
 		}
 	}
 }
