@@ -34,6 +34,22 @@
 daq_settings_t master_settings;
 daq_measured_data_t calc_data;
 
+/*
+void create_test_data (void)
+{
+	uint16_t *data_prt;
+	uint32_t n = 0;
+	data_prt = core_get_raw_data_pntr();
+	for(n = 0; n < 20; n += 4)
+	{
+		*(data_prt + n + 0) = 1000;
+		*(data_prt + n + 1) = 2000;
+		*(data_prt + n + 2) = 3000;
+		*(data_prt + n + 3) = 4000;
+	}
+}
+*/
+
 void delay (void)
 {
 	volatile uint32_t n;
@@ -53,9 +69,11 @@ void calculate_data (void)
 	{
 		calc_data.results[n] = 0;
 	}
+	m = 0;
 	for(n = 0; n < core_get_raw_data_size(); n++)
 	{
-		for(!(master_settings.channels & (0x01 << m)))
+		
+		while(!(master_settings.channels & (0x01 << m))) // skip all disabled channels
 		{
 			m++;
 			if(m > 3)
@@ -68,9 +86,9 @@ void calculate_data (void)
 	}
 	for(n = 0; n < 4; n++)
 	{
-+		if((master_settings.channels & (0x01 << n))) // only divide enabled channels
+		if((master_settings.channels & (0x01 << n))) // only divide enabled channels
 		{
-			calc_data.results[n] /= (core_get_raw_data_size() / 4);
+			calc_data.results[n] /= master_settings.averaging;
 		}
 	}
 	calc_data.new_data = 1;
@@ -84,10 +102,10 @@ int main (void)
 	board_init();
 	core_init();
 	
-	master_settings.acquisitionNbr = 6;
+	master_settings.acquisitionNbr = 4;
 	master_settings.acqusitionTime = 10000;
-	master_settings.averaging = 2;
-	master_settings.channels = (DAQ_CHANNEL_1);
+	master_settings.averaging = 5;
+	master_settings.channels = (DAQ_CHANNEL_2);
 
 	while(1)
 	{

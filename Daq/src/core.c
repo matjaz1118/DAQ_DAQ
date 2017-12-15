@@ -33,11 +33,15 @@ void core_init (void)
 {
 	//init adc
 	pmc_enable_periph_clk(ID_ADC);
-	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 1);
-	adc_configure_timing(ADC, 8, ADC_SETTLING_TIME_3, 1);
+	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 3);
+	adc_configure_timing(ADC, 1, ADC_SETTLING_TIME_3, 1);
 	adc_configure_trigger(ADC, ADC_TRIG_SW, ADC_MR_FREERUN_ON); //WARNING! Bug in ASF! ADC_MR_FREERUN_ON does't actualy enables freerun mode!
 	ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
 					 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
+					 
+	PIOA->PIO_PUDR = (PIO_PUDR_P17 | PIO_PUDR_P18 | PIO_PUDR_P19 | PIO_PUDR_P20);
+	PIOB->PIO_PUDR = (PIO_PUDR_P0 | PIO_PUDR_P1 | PIO_PUDR_P2 | PIO_PUDR_P3);
+	
 	#if ADC_CORE_DEBUG == 1
 		pio_init();
 	#endif //ADC_CORE_DEBUG == 1
