@@ -33,11 +33,14 @@ void core_init (void)
 {
 	//init adc
 	pmc_enable_periph_clk(ID_ADC);
-	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 3);
-	adc_configure_timing(ADC, 1, ADC_SETTLING_TIME_3, 1);
+	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 0);
+	adc_configure_timing(ADC, 0, ADC_SETTLING_TIME_0, 1);
 	adc_configure_trigger(ADC, ADC_TRIG_SW, ADC_MR_FREERUN_ON); //WARNING! Bug in ASF! ADC_MR_FREERUN_ON does't actualy enables freerun mode!
-	ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
-					 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
+	//ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
+	//				 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
+	adc_set_bias_current(ADC, 1);
+	//debugging
+	ADC->ADC_EMR |= ADC_EMR_TAG;
 	#if ADC_CORE_DEBUG == 1
 		pio_init();
 	#endif //ADC_CORE_DEBUG == 1
@@ -90,7 +93,9 @@ void core_configure (daq_settings_t *settings)
 		if(settings->channels & (0x01 << n))
 		{
 			nb_enables_ch ++;
-			adc_enable_channel(ADC, (n * 2));
+			//debugging
+			//adc_enable_channel(ADC, (n * 2));
+			adc_enable_channel(ADC, (n));
 		}
 	}
 	//configure dma
@@ -113,6 +118,7 @@ void core_start (void)
 	acqusition_in_progress = 1;
 	tc_start(TC0, TIMER_CH);
 	ADC->ADC_MR |= ADC_MR_FREERUN; //due to a bug in ASF we enable freerun mode manualy
+	//adc_start(ADC);
 	#if ADC_CORE_DEBUG == 1
 		ADC_DEBUG_PIN_SET;
 	#endif //ADC_CORE_DEBUG == 1
@@ -160,10 +166,13 @@ void ADC_Handler (void)
 		#if ADC_CORE_DEBUG == 1
 			ADC_DEBUG_PIN_CLR;
 		#endif //ADC_CORE_DEBUG == 1
+		
 		//configure dma for next acquisition
-		adc_pdc.ul_size = raw_data_size;
+		//adc_pdc.ul_size = raw_data_size;
+		//adc_pdc.ul_addr = adc_raw_data;
 		pdc_rx_init(adc_pdc_pntr, &adc_pdc, NULL);
-		adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
+		//adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
+		
 		//report new data
 		new_data = 1;
 	}

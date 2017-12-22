@@ -102,10 +102,10 @@ int main (void)
 	board_init();
 	core_init();
 	
-	master_settings.acquisitionNbr = 4;
+	master_settings.acquisitionNbr = 1;
 	master_settings.acqusitionTime = 10000;
-	master_settings.averaging = 5;
-	master_settings.channels = (DAQ_CHANNEL_2);
+	master_settings.averaging = 3;
+	master_settings.channels = (DAQ_CHANNEL_1 | DAQ_CHANNEL_2);
 
 	while(1)
 	{
