@@ -170,6 +170,7 @@ void ADC_Handler (void)
 		//configure dma for next acquisition
 		//adc_pdc.ul_size = raw_data_size;
 		//adc_pdc.ul_addr = adc_raw_data;
+		
 		pdc_rx_init(adc_pdc_pntr, &adc_pdc, NULL);
 		//adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
 		
