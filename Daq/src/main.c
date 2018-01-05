@@ -105,7 +105,7 @@ int main (void)
 	master_settings.acquisitionNbr = 1;
 	master_settings.acqusitionTime = 10000;
 	master_settings.averaging = 3;
-	master_settings.channels = (DAQ_CHANNEL_1 | DAQ_CHANNEL_2);
+	master_settings.channels = (DAQ_CHANNEL_1 | DAQ_CHANNEL_2 | DAQ_CHANNEL_3 | DAQ_CHANNEL_4);
 
 	while(1)
 	{

@@ -247,6 +247,7 @@
           </JtagDaisyChainDevices>
         </InterfaceProperties>
         <InterfaceName>JTAG</InterfaceName>
+        <JlinkConfigFile>D:\GoogleDrive\my_documents\projects\FE\USB DAQ\firmware\DAQ_new\Daq\jlink.config</JlinkConfigFile>
       </ToolOptions>
       <ToolType>com.atmel.avrdbg.tool.samice</ToolType>
       <ToolNumber>268005015</ToolNumber>

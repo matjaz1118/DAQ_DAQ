@@ -8,11 +8,13 @@
 #include "core.h"
 #include "parser.h"
 
-pdc_packet_t adc_pdc;
+pdc_packet_t adc_pdc1, adc_pdc2;
 Pdc *adc_pdc_pntr;
 
-uint16_t adc_raw_data [ADC_RAW_DATA_SIZE];
-volatile uint32_t rep_cntr, new_data = 0, acqusition_in_progress = 0;
+uint16_t adc_raw_data1 [ADC_RAW_DATA_SIZE];
+uint16_t adc_raw_data2 [ADC_RAW_DATA_SIZE];
+uint32_t adc_raw_accumulator [ADC_RAW_DATA_SIZE];
+volatile uint32_t rep_cntr, new_data = 0, acqusition_in_progress = 0, data_bank = 0, avg_cntr;
 uint32_t raw_data_size;
 
 
@@ -35,7 +37,8 @@ void core_init (void)
 	pmc_enable_periph_clk(ID_ADC);
 	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 0);
 	adc_configure_timing(ADC, 0, ADC_SETTLING_TIME_0, 1);
-	adc_configure_trigger(ADC, ADC_TRIG_SW, ADC_MR_FREERUN_ON); //WARNING! Bug in ASF! ADC_MR_FREERUN_ON does't actualy enables freerun mode!
+	adc_configure_trigger(ADC, ADC_TRIG_SW, 0); //WARNING! Bug in ASF! ADC_MR_FREERUN_ON does't actualy enables freerun mode!
+	//adc_check(ADC, sysclk_get_cpu_hz());
 	//ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
 	//				 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
 	adc_set_bias_current(ADC, 1);
@@ -46,7 +49,8 @@ void core_init (void)
 	#endif //ADC_CORE_DEBUG == 1
 	
 	adc_pdc_pntr = adc_get_pdc_base(ADC); // init DMA
-	adc_pdc.ul_addr = adc_raw_data;
+	adc_pdc1.ul_addr = adc_raw_data1;
+	adc_pdc2.ul_addr = adc_raw_data2;
 	NVIC_ClearPendingIRQ(ADC_IRQn);
 	NVIC_SetPriority(ADC_IRQn, ADC_IRQ_PRIORITY);
 	NVIC_EnableIRQ(ADC_IRQn);  
@@ -100,12 +104,16 @@ void core_configure (daq_settings_t *settings)
 	}
 	//configure dma
 	raw_data_size = settings->averaging * nb_enables_ch;
-	adc_pdc.ul_size = raw_data_size;
-	pdc_rx_init(adc_pdc_pntr, &adc_pdc, NULL);
-	adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
+	adc_pdc1.ul_size = nb_enables_ch;
+	adc_pdc2.ul_size = nb_enables_ch;
+	pdc_rx_init(adc_pdc_pntr, &adc_pdc1, &adc_pdc2);
+	adc_enable_interrupt(ADC, ADC_IER_ENDRX);
 	
 	//set repetition counter
 	rep_cntr = settings->acquisitionNbr;
+	
+	//set average counter
+	avg_cntr = settings->averaging;
 	
 	//set timer
 	timer_set_compare_time(US_TO_TC(settings->acqusitionTime));
@@ -116,9 +124,10 @@ void core_start (void)
 {
 	pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 	acqusition_in_progress = 1;
-	tc_start(TC0, TIMER_CH);
-	ADC->ADC_MR |= ADC_MR_FREERUN; //due to a bug in ASF we enable freerun mode manualy
-	//adc_start(ADC);
+	//debug
+	//tc_start(TC0, TIMER_CH);
+	//ADC->ADC_MR |= ADC_MR_FREERUN; //due to a bug in ASF we enable freerun mode manualy
+	adc_start(ADC);
 	#if ADC_CORE_DEBUG == 1
 		ADC_DEBUG_PIN_SET;
 	#endif //ADC_CORE_DEBUG == 1
@@ -150,7 +159,7 @@ uint32_t core_new_data_claer (void)
 
 uint16_t* core_get_raw_data_pntr (void)
 {
-	return adc_raw_data;
+	return adc_raw_accumulator;
 }
 
 uint32_t core_get_raw_data_size (void)
@@ -160,20 +169,40 @@ uint32_t core_get_raw_data_size (void)
 
 void ADC_Handler (void)
 {
-	if(ADC->ADC_ISR & ADC_ISR_RXBUFF) // this gets triggered when acquisition of all samples for one averaging is complete
+	uint32_t n;
+	if(adc_get_status(ADC) & ADC_ISR_ENDRX) // this gets triggered when acquisition of all samples for one averaging is complete
+	
 	{
 		ADC->ADC_MR &= (~ADC_MR_FREERUN); //stop adc
 		#if ADC_CORE_DEBUG == 1
 			ADC_DEBUG_PIN_CLR;
 		#endif //ADC_CORE_DEBUG == 1
-		
-		//configure dma for next acquisition
-		//adc_pdc.ul_size = raw_data_size;
-		//adc_pdc.ul_addr = adc_raw_data;
-		
-		pdc_rx_init(adc_pdc_pntr, &adc_pdc, NULL);
-		//adc_enable_interrupt(ADC, ADC_IER_RXBUFF);
-		
+		if(!data_bank) // new data resides in adc_raw_data1
+		{
+			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc1);
+			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+			data_bank = 1;
+			for(n = 0; n < 4; n++)
+			{
+				adc_raw_accumulator[n] += adc_raw_data1[n];
+			}
+		}
+		else // new data resides in adc_raw_data2
+		{
+			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc2);
+			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+			data_bank = 0;
+			for(n = 0; n < 4; n++)
+			{
+				adc_raw_accumulator[n] += adc_raw_data2[n];
+			}
+		}
+		if(--avg_cntr == 0)
+		{
+			pdc_disable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+		}
+		adc_start(ADC);
+				
 		//report new data
 		new_data = 1;
 	}

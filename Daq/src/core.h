@@ -18,7 +18,7 @@
 
 
 #define ADC_CORE_DEBUG	1 //set to 1 for aditional development debugging
-#define ADC_RAW_DATA_SIZE DAQ_MAX_AVG_NB * 4 //maximum size of raw datra buffer for averaging
+#define ADC_RAW_DATA_SIZE  4 //maximum size of raw datra buffer for averaging
 
 //ADC configs
 #define ADC_CLK	16000000 // clock of ADC converter
@@ -66,10 +66,10 @@ typedef enum
 
 typedef struct
 {
-	uint32_t acqusitionTime;
-	uint32_t acquisitionNbr;
-	uint32_t averaging;
-	channel_bitmask_t channels;	
+	uint32_t acqusitionTime;	//period of acqusition
+	uint32_t acquisitionNbr;	//number of consecutive acquisitions
+	uint32_t averaging;			//number of averages
+	channel_bitmask_t channels;	//enabled channels bitmask
 }daq_settings_t;
 
 typedef struct
