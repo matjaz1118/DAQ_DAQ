@@ -90,6 +90,12 @@ void core_configure (daq_settings_t *settings)
 	//validate settings
 	validate_settings(settings);
 	
+	//clear averageing accumulator
+	for(n = 0; n < 4; n++)
+	{
+		adc_raw_accumulator[n] = 0;
+	}
+	
 	//enable enabled channels and count the number of them
 	adc_disable_all_channel(ADC);
 	for(n = 0; n < 4; n++)
@@ -107,6 +113,7 @@ void core_configure (daq_settings_t *settings)
 	adc_pdc1.ul_size = nb_enables_ch;
 	adc_pdc2.ul_size = nb_enables_ch;
 	pdc_rx_init(adc_pdc_pntr, &adc_pdc1, &adc_pdc2);
+	data_bank = 0;
 	adc_enable_interrupt(ADC, ADC_IER_ENDRX);
 	
 	//set repetition counter
@@ -173,38 +180,47 @@ void ADC_Handler (void)
 	if(adc_get_status(ADC) & ADC_ISR_ENDRX) // this gets triggered when acquisition of all samples for one averaging is complete
 	
 	{
-		ADC->ADC_MR &= (~ADC_MR_FREERUN); //stop adc
-		#if ADC_CORE_DEBUG == 1
-			ADC_DEBUG_PIN_CLR;
-		#endif //ADC_CORE_DEBUG == 1
+		//ADC->ADC_MR &= (~ADC_MR_FREERUN); //stop adc		
 		if(!data_bank) // new data resides in adc_raw_data1
 		{
 			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc1);
 			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+			adc_start(ADC);
+			
 			data_bank = 1;
 			for(n = 0; n < 4; n++)
 			{
 				adc_raw_accumulator[n] += adc_raw_data1[n];
-			}
+			}		
 		}
 		else // new data resides in adc_raw_data2
 		{
 			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc2);
 			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+			adc_start(ADC);
 			data_bank = 0;
+			
 			for(n = 0; n < 4; n++)
 			{
 				adc_raw_accumulator[n] += adc_raw_data2[n];
 			}
+			
 		}
 		if(--avg_cntr == 0)
 		{
 			pdc_disable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+			//do this to clear dma flag
+			pdc_rx_init(adc_pdc_pntr, &adc_pdc1, NULL);
+			
+			#if ADC_CORE_DEBUG == 1
+				ADC_DEBUG_PIN_CLR;
+			#endif //ADC_CORE_DEBUG == 1
+			
+			//report new data
+			new_data = 1;
 		}
-		adc_start(ADC);
+		
 				
-		//report new data
-		new_data = 1;
 	}
 }
 

@@ -53,7 +53,7 @@ void create_test_data (void)
 void delay (void)
 {
 	volatile uint32_t n;
-	for(n = 0; n < 1000000; n++) {}
+	for(n = 0; n < 10000; n++) {}
 }
 void print_data (void)
 {
@@ -69,29 +69,12 @@ void calculate_data (void)
 	{
 		calc_data.results[n] = 0;
 	}
-	m = 0;
-	for(n = 0; n < core_get_raw_data_size(); n++)
-	{
-		
-		while(!(master_settings.channels & (0x01 << m))) // skip all disabled channels
-		{
-			m++;
-			if(m > 3)
-			{
-				m = 0;
-			}
-		}
-		calc_data.results[m] += *(raw_data_ptr + n);
-		m++;
-	}
 	for(n = 0; n < 4; n++)
 	{
-		if((master_settings.channels & (0x01 << n))) // only divide enabled channels
-		{
-			calc_data.results[n] /= master_settings.averaging;
-		}
+		calc_data.results[n] = *(raw_data_ptr + n) / master_settings.averaging; 
 	}
 	calc_data.new_data = 1;
+	
 }
 
 int main (void)
@@ -104,22 +87,21 @@ int main (void)
 	
 	master_settings.acquisitionNbr = 1;
 	master_settings.acqusitionTime = 10000;
-	master_settings.averaging = 3;
-	master_settings.channels = (DAQ_CHANNEL_1 | DAQ_CHANNEL_2 | DAQ_CHANNEL_3 | DAQ_CHANNEL_4);
+	master_settings.averaging = 2;
+	master_settings.channels = (DAQ_CHANNEL_1);
 
 	while(1)
 	{
+		
 		core_configure(&master_settings);
 		core_start();
-		while(core_status_get() == CORE_RUNNING)
+		while(!core_new_data_ready())
 		{
-			if(core_new_data_ready())
-			{
-				calculate_data();
-				print_data();
-				core_new_data_claer();
-			}
+			asm("NOP");
 		}
+		calculate_data();
+		print_data();
+		core_new_data_claer();
 		delay();
 	}
 }
