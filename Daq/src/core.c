@@ -36,14 +36,15 @@ void core_init (void)
 	//init adc
 	pmc_enable_periph_clk(ID_ADC);
 	adc_init(ADC, sysclk_get_cpu_hz(), ADC_CLK, 0);
-	adc_configure_timing(ADC, 0, ADC_SETTLING_TIME_0, 1);
+	adc_configure_timing(ADC, 15, ADC_SETTLING_TIME_0, 0);
 	adc_configure_trigger(ADC, ADC_TRIG_SW, 0); //WARNING! Bug in ASF! ADC_MR_FREERUN_ON does't actualy enables freerun mode!
 	//adc_check(ADC, sysclk_get_cpu_hz());
-	//ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
-	//				 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
+	ADC->ADC_COR |= (ADC_COR_DIFF0 | ADC_COR_DIFF1 | ADC_COR_DIFF2 | ADC_COR_DIFF3
+					 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
+	ADC->ADC_CGR = 0x00005555; // set gain to 1
 	adc_set_bias_current(ADC, 1);
-	//debugging
-	ADC->ADC_EMR |= ADC_EMR_TAG;
+		//debugging
+		//ADC->ADC_EMR |= ADC_EMR_TAG;
 	#if ADC_CORE_DEBUG == 1
 		pio_init();
 	#endif //ADC_CORE_DEBUG == 1
@@ -103,13 +104,11 @@ void core_configure (daq_settings_t *settings)
 		if(settings->channels & (0x01 << n))
 		{
 			nb_enables_ch ++;
-			//debugging
-			//adc_enable_channel(ADC, (n * 2));
-			adc_enable_channel(ADC, (n));
+			adc_enable_channel(ADC, (n * 2));
 		}
 	}
 	//configure dma
-	raw_data_size = settings->averaging * nb_enables_ch;
+	//raw_data_size = settings->averaging * nb_enables_ch;
 	adc_pdc1.ul_size = nb_enables_ch;
 	adc_pdc2.ul_size = nb_enables_ch;
 	pdc_rx_init(adc_pdc_pntr, &adc_pdc1, &adc_pdc2);
@@ -183,7 +182,7 @@ void ADC_Handler (void)
 		//ADC->ADC_MR &= (~ADC_MR_FREERUN); //stop adc		
 		if(!data_bank) // new data resides in adc_raw_data1
 		{
-			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc1);
+			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc2);
 			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 			adc_start(ADC);
 			
@@ -195,7 +194,7 @@ void ADC_Handler (void)
 		}
 		else // new data resides in adc_raw_data2
 		{
-			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc2);
+			pdc_rx_init(adc_pdc_pntr, NULL, &adc_pdc1);
 			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 			adc_start(ADC);
 			data_bank = 0;

@@ -62,13 +62,9 @@ void print_data (void)
 
 void calculate_data (void)
 {
-	uint16_t* raw_data_ptr;
+	uint32_t* raw_data_ptr;
 	uint32_t n, m = 0;
 	raw_data_ptr = core_get_raw_data_pntr();
-	for(n = 0; n < 4; n++) // clear the array
-	{
-		calc_data.results[n] = 0;
-	}
 	for(n = 0; n < 4; n++)
 	{
 		calc_data.results[n] = *(raw_data_ptr + n) / master_settings.averaging; 
@@ -87,8 +83,8 @@ int main (void)
 	
 	master_settings.acquisitionNbr = 1;
 	master_settings.acqusitionTime = 10000;
-	master_settings.averaging = 2;
-	master_settings.channels = (DAQ_CHANNEL_1);
+	master_settings.averaging = 4;
+	master_settings.channels = (DAQ_CHANNEL_2);
 
 	while(1)
 	{
