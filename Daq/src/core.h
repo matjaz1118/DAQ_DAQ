@@ -89,4 +89,5 @@ uint32_t core_new_data_ready (void);
 uint32_t core_new_data_claer (void);
 uint16_t* core_get_raw_data_pntr (void);
 uint32_t core_get_raw_data_size (void);
+void core_clear_avg_acuum (void);
 #endif /* CORE_H_ */

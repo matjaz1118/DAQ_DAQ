@@ -14,7 +14,7 @@ Pdc *adc_pdc_pntr;
 uint16_t adc_raw_data1 [ADC_RAW_DATA_SIZE];
 uint16_t adc_raw_data2 [ADC_RAW_DATA_SIZE];
 uint32_t adc_raw_accumulator [ADC_RAW_DATA_SIZE];
-volatile uint32_t rep_cntr, new_data = 0, acqusition_in_progress = 0, data_bank = 0, avg_cntr;
+volatile uint32_t rep_cntr, new_data = 0, acqusition_in_progress = 0, data_bank = 0, avg_cntr, avg_cnt_reload;
 uint32_t raw_data_size;
 
 
@@ -43,8 +43,6 @@ void core_init (void)
 					 | ADC_COR_DIFF4 | ADC_COR_DIFF5 | ADC_COR_DIFF6 | ADC_COR_DIFF7); // set channels to differential
 	ADC->ADC_CGR = 0x00005555; // set gain to 1
 	adc_set_bias_current(ADC, 1);
-		//debugging
-		//ADC->ADC_EMR |= ADC_EMR_TAG;
 	#if ADC_CORE_DEBUG == 1
 		pio_init();
 	#endif //ADC_CORE_DEBUG == 1
@@ -92,10 +90,7 @@ void core_configure (daq_settings_t *settings)
 	validate_settings(settings);
 	
 	//clear averageing accumulator
-	for(n = 0; n < 4; n++)
-	{
-		adc_raw_accumulator[n] = 0;
-	}
+	core_clear_avg_acuum ();
 	
 	//enable enabled channels and count the number of them
 	adc_disable_all_channel(ADC);
@@ -120,9 +115,14 @@ void core_configure (daq_settings_t *settings)
 	
 	//set average counter
 	avg_cntr = settings->averaging;
+	avg_cnt_reload = settings->averaging;
 	
 	//set timer
 	timer_set_compare_time(US_TO_TC(settings->acqusitionTime));
+	
+	#if ADC_CORE_DEBUG == 1
+			TIMER_DEBUG_PIN_CLR;
+	#endif //ADC_CORE_DEBUG == 1
 	
 }
 
@@ -130,13 +130,9 @@ void core_start (void)
 {
 	pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 	acqusition_in_progress = 1;
-	//debug
-	//tc_start(TC0, TIMER_CH);
+	tc_start(TC0, TIMER_CH);
 	//ADC->ADC_MR |= ADC_MR_FREERUN; //due to a bug in ASF we enable freerun mode manualy
 	adc_start(ADC);
-	#if ADC_CORE_DEBUG == 1
-		ADC_DEBUG_PIN_SET;
-	#endif //ADC_CORE_DEBUG == 1
 }
 
 core_status_t core_status_get (void)
@@ -173,12 +169,26 @@ uint32_t core_get_raw_data_size (void)
 	return raw_data_size;
 }
 
+void core_clear_avg_acuum (void)
+{
+	uint32_t n;
+	//clear averageing accumulator
+	for(n = 0; n < 4; n++)
+	{
+		adc_raw_accumulator[n] = 0;
+	}
+}
+
 void ADC_Handler (void)
 {
 	uint32_t n;
 	if(adc_get_status(ADC) & ADC_ISR_ENDRX) // this gets triggered when acquisition of all samples for one averaging is complete
 	
 	{
+		#if ADC_CORE_DEBUG == 1
+		ADC_DEBUG_PIN_SET;
+		#endif //ADC_CORE_DEBUG == 1
+		
 		//ADC->ADC_MR &= (~ADC_MR_FREERUN); //stop adc		
 		if(!data_bank) // new data resides in adc_raw_data1
 		{
@@ -205,7 +215,7 @@ void ADC_Handler (void)
 			}
 			
 		}
-		if(--avg_cntr == 0)
+		if(!(--avg_cntr))
 		{
 			pdc_disable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 			//do this to clear dma flag
@@ -217,6 +227,7 @@ void ADC_Handler (void)
 			
 			//report new data
 			new_data = 1;
+			avg_cntr = avg_cnt_reload;
 		}
 		
 				
@@ -232,11 +243,10 @@ void TC0_Handler (void)
 		#endif //ADC_CORE_DEBUG == 1
 		if(--rep_cntr)
 		{
-			ADC->ADC_MR |= ADC_MR_FREERUN; //start adc
-			#if ADC_CORE_DEBUG == 1
-				ADC_DEBUG_PIN_SET;
-			#endif //ADC_CORE_DEBUG == 1
-			adc_start(ADC);
+			pdc_rx_init(adc_pdc_pntr, &adc_pdc1, &adc_pdc2);
+			data_bank = 0;
+			pdc_enable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
+			adc_start(ADC);	
 		}
 		else
 		{

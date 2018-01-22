@@ -33,6 +33,7 @@
 
 daq_settings_t master_settings;
 daq_measured_data_t calc_data;
+uint16_t debug_out [40];
 
 /*
 void create_test_data (void)
@@ -60,6 +61,13 @@ void print_data (void)
 	asm("NOP");
 }
 
+void debug_copy_data (void)
+{
+	static uint32_t n = 0;
+	debug_out[n] = calc_data.results[0];
+	n++;
+}
+
 void calculate_data (void)
 {
 	uint32_t* raw_data_ptr;
@@ -70,7 +78,7 @@ void calculate_data (void)
 		calc_data.results[n] = *(raw_data_ptr + n) / master_settings.averaging; 
 	}
 	calc_data.new_data = 1;
-	
+	core_clear_avg_acuum();
 }
 
 int main (void)
@@ -81,7 +89,7 @@ int main (void)
 	board_init();
 	core_init();
 	
-	master_settings.acquisitionNbr = 1;
+	master_settings.acquisitionNbr = 4;
 	master_settings.acqusitionTime = 10000;
 	master_settings.averaging = 4;
 	master_settings.channels = (DAQ_CHANNEL_2);
@@ -91,11 +99,15 @@ int main (void)
 		
 		core_configure(&master_settings);
 		core_start();
-		while(!core_new_data_ready())
+		while(core_status_get() == CORE_RUNNING)
 		{
-			asm("NOP");
+			if(core_new_data_ready())
+			{
+				calculate_data();
+				debug_copy_data();
+				core_new_data_claer();
+			}
 		}
-		calculate_data();
 		print_data();
 		core_new_data_claer();
 		delay();
