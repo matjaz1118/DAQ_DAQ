@@ -65,7 +65,8 @@ void debug_copy_data (void)
 {
 	static uint32_t n = 0;
 	debug_out[n] = calc_data.results[0];
-	n++;
+	debug_out[n + 1] = calc_data.results[1];
+	n += 2;
 }
 
 void calculate_data (void)
@@ -89,10 +90,10 @@ int main (void)
 	board_init();
 	core_init();
 	
-	master_settings.acquisitionNbr = 4;
+	master_settings.acquisitionNbr = 2;
 	master_settings.acqusitionTime = 10000;
-	master_settings.averaging = 4;
-	master_settings.channels = (DAQ_CHANNEL_2);
+	master_settings.averaging = 6;
+	master_settings.channels = (DAQ_CHANNEL_1 |DAQ_CHANNEL_2);
 
 	while(1)
 	{

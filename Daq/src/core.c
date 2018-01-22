@@ -215,15 +215,16 @@ void ADC_Handler (void)
 			}
 			
 		}
+		#if ADC_CORE_DEBUG == 1
+		ADC_DEBUG_PIN_CLR;
+		#endif //ADC_CORE_DEBUG == 1
 		if(!(--avg_cntr))
 		{
 			pdc_disable_transfer(adc_pdc_pntr, PERIPH_PTCR_RXTEN);
 			//do this to clear dma flag
 			pdc_rx_init(adc_pdc_pntr, &adc_pdc1, NULL);
 			
-			#if ADC_CORE_DEBUG == 1
-				ADC_DEBUG_PIN_CLR;
-			#endif //ADC_CORE_DEBUG == 1
+			
 			
 			//report new data
 			new_data = 1;
